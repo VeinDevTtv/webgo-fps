@@ -1,0 +1,29 @@
+{
+  "name": "webgo-multiplayer-server",
+  "version": "1.0.0",
+  "description": "WebGO FPS Multiplayer Server",
+  "main": "multiplayer-server.js",
+  "scripts": {
+    "start": "node multiplayer-server.js",
+    "dev": "nodemon multiplayer-server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "websocket",
+    "multiplayer",
+    "game",
+    "fps",
+    "webgo"
+  ],
+  "author": "WebGO Team",
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.14.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+} 

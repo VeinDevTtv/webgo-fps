@@ -1,0 +1,97 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+WebGO Coding & Architecture Rules
+🧠 General Guidelines
+✅ Always check the full codebase before adding a feature. Avoid duplicating logic or functionality.
+
+✅ Follow the existing architecture and naming conventions unless explicitly told to refactor.
+
+✅ Use TypeScript strict mode and provide accurate typings. Avoid any unless absolutely required.
+
+✅ Write clean, self-documenting code. Use comments only for complex logic.
+
+✅ Always prefer composition over inheritance. Avoid tight coupling between systems.
+
+✅ Never hardcode config values.
+
+🏗️ Feature Development Rules
+Before writing new logic, scan the project to ensure it doesn’t already exist.
+
+If modifying an existing feature, read all related components, state, and side effects first.
+
+Reuse shared logic and utilities when possible.
+
+When creating a new feature:
+
+Define its data flow (input → process → output).
+
+Write or reuse proper state slices in Zustand.
+
+Ensure UI is fully decoupled from logic.
+
+⚠️ Error Handling & Stability
+All I/O (localStorage, IndexedDB, WebSocket, audio) must include error handling.
+
+Use React Error Boundaries in all top-level routes or game containers.
+
+Validate every input: player settings, inventory actions, crafting interactions, etc.
+
+🧪 Testing & Validation
+New core systems must include at least:
+
+1 unit test (using Jest)
+
+1 integration test (optional for UI)
+
+Before finalizing any implementation:
+
+Manually test state updates
+
+Validate UI responsiveness
+
+Inspect browser console for warnings/errors
+
+📊 Performance & Optimization
+Use useMemo, useCallback, and React.memo where relevant.
+
+Heavy tasks (e.g., terrain generation, LOD calculations) must run in a Web Worker.
+
+Unmount cleanup is mandatory for:
+
+setInterval, setTimeout, event listeners, subscriptions
+
+Limit re-renders: avoid passing full objects in context/states.
+
+🔊 Audio & Graphics
+Audio must use 3D spatial audio when relevant.
+
+Prefer existing sound manager API over new implementations.
+
+All rendering assets (models, effects) must be instanced or pooled to save GPU memory.
+
+💾 Multiplayer & Networking
+Ensure data consistency between client and server before syncing.
+
+Every message must have:
+
+A unique event ID
+
+Payload schema
+
+Fallback handler
+
+Multiplayer state should be kept separate from local-only game state.
+
+🚫 Do Not
+❌ Do not push untested features.
+
+❌ Do not commit commented-out blocks of old code.
+
+❌ Do not introduce external libraries without approval.
+
+❌ Do not use any, as, or //@ts-ignore unless it's clearly documented why.
+
+
