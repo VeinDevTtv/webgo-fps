@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useEffect, useState } from "react"
+import { useRef, useEffect, useState, useMemo } from "react"
 import { useFrame, useThree } from "@react-three/fiber"
 import { useGameState } from "@/lib/game-context"
 import * as THREE from "three"
@@ -8,7 +8,14 @@ import type { TreeInstance } from "@/lib/tree-generator"
 import { useSoundManager } from "@/lib/sound-manager"
 import { useInventory } from "@/lib/inventory-context"
 import type { StoneNodeInstance } from "@/lib/stone-generator"
-import type { Wall } from "@/lib/wall-generator" // Declare the Wall variable
+
+// Define Wall interface inline since wall-generator doesn't exist
+interface Wall {
+  position: [number, number, number]
+  geometry: THREE.BufferGeometry
+  material: THREE.Material
+  rotation?: [number, number, number]
+}
 
 // Define a type for storage boxes
 interface StorageBoxInstance {
@@ -79,6 +86,45 @@ export default function Player({
   const soundManager = useSoundManager()
   const [debugStoneCollision, setDebugStoneCollision] = useState(false)
   const debugSphereRef = useRef<THREE.Mesh>(null)
+  const playerBodyRef = useRef<THREE.Group>(null)
+  const leftArmRef = useRef<THREE.Group>(null)
+  const rightArmRef = useRef<THREE.Group>(null)
+  const legsRef = useRef<THREE.Group>(null)
+  const [showPlayerBody, setShowPlayerBody] = useState(true)
+  const [debugMode, setDebugMode] = useState(false)
+
+  // Create materials for player body parts
+  const skinMaterial = useMemo(() => 
+    new THREE.MeshStandardMaterial({ 
+      color: "#d4a574", 
+      roughness: 0.8, 
+      metalness: 0.1,
+      wireframe: debugMode 
+    }), [debugMode])
+    
+  const shirtMaterial = useMemo(() => 
+    new THREE.MeshStandardMaterial({ 
+      color: "#4a5568", 
+      roughness: 0.9, 
+      metalness: 0.1,
+      wireframe: debugMode 
+    }), [debugMode])
+    
+  const pantsMaterial = useMemo(() => 
+    new THREE.MeshStandardMaterial({ 
+      color: "#2d3748", 
+      roughness: 0.9, 
+      metalness: 0.1,
+      wireframe: debugMode 
+    }), [debugMode])
+    
+  const shoesMaterial = useMemo(() => 
+    new THREE.MeshStandardMaterial({ 
+      color: "#1a202c", 
+      roughness: 0.9, 
+      metalness: 0.1,
+      wireframe: debugMode 
+    }), [debugMode])
 
   // Initialize player position and physics state
   const playerPosition = useRef(new THREE.Vector3(0, PLAYER_HEIGHT, 0))
@@ -146,6 +192,29 @@ export default function Player({
       velocity.current.set(0, -0.1, 0)
     }
   }, [camera, spawnPoint])
+
+  // Handle player body visibility toggle
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.code === 'KeyV') {
+        setShowPlayerBody(prev => {
+          const newValue = !prev
+          console.log('Player body visibility toggled:', newValue)
+          return newValue
+        })
+      }
+      if (event.code === 'KeyB') {
+        setDebugMode(prev => {
+          const newValue = !prev
+          console.log('Player body debug mode toggled:', newValue)
+          return newValue
+        })
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   // Create wall collision boxes
   const wallBoxes = useRef<THREE.Box3[]>([])
@@ -864,10 +933,123 @@ export default function Player({
     if (playerRef.current) {
       playerRef.current.position.copy(playerPosition.current).sub(new THREE.Vector3(0, crouchOffset, 0))
     }
+
+    // Update player body position and rotation relative to camera
+    if (playerBodyRef.current && isLocked && !disabled) {
+      // Position the player body group at camera position
+      playerBodyRef.current.position.copy(camera.position)
+      playerBodyRef.current.rotation.copy(camera.rotation)
+      
+      // Offset the body slightly down and back so it's visible when looking down
+      const bodyOffset = new THREE.Vector3(0, -0.2, 0.1)
+      bodyOffset.applyQuaternion(camera.quaternion)
+      playerBodyRef.current.position.add(bodyOffset)
+      
+      // Add walking animation
+      if (isMoving && isGrounded.current) {
+        const time = state.clock.elapsedTime
+        const walkCycle = Math.sin(time * 8) * 0.01
+        const sway = Math.sin(time * 4) * 0.005
+        
+        playerBodyRef.current.position.y += walkCycle
+        playerBodyRef.current.rotation.z += sway
+        
+        // Animate arms
+        if (leftArmRef.current && rightArmRef.current) {
+          const armSwing = Math.sin(time * 8) * 0.1
+          leftArmRef.current.rotation.x = armSwing
+          rightArmRef.current.rotation.x = -armSwing
+        }
+        
+        // Animate legs
+        if (legsRef.current) {
+          const legCycle = Math.sin(time * 8) * 0.05
+          legsRef.current.rotation.x = legCycle
+        }
+      } else {
+        // Reset animations when not moving
+        if (leftArmRef.current && rightArmRef.current) {
+          leftArmRef.current.rotation.x = 0
+          rightArmRef.current.rotation.x = 0
+        }
+        if (legsRef.current) {
+          legsRef.current.rotation.x = 0
+        }
+      }
+      
+      // Apply crouch animation
+      if (isCrouching.current) {
+        const crouchBodyOffset = new THREE.Vector3(0, -crouchOffset * 0.3, 0)
+        crouchBodyOffset.applyQuaternion(camera.quaternion)
+        playerBodyRef.current.position.add(crouchBodyOffset)
+      }
+    }
   })
 
   return (
     <>
+      {/* First-Person Player Body - visible when looking down */}
+      <group ref={playerBodyRef} visible={showPlayerBody}>
+        {/* Left Arm */}
+        <group ref={leftArmRef} position={[-0.3, -0.2, -0.4]}>
+          <mesh position={[0, 0, 0]}>
+            <boxGeometry args={[0.08, 0.3, 0.08]} />
+            <primitive object={skinMaterial} />
+          </mesh>
+          {/* Left Hand */}
+          <mesh position={[0, -0.2, -0.1]}>
+            <sphereGeometry args={[0.06, 8, 8]} />
+            <primitive object={skinMaterial} />
+          </mesh>
+        </group>
+        
+        {/* Right Arm */}
+        <group ref={rightArmRef} position={[0.3, -0.2, -0.4]}>
+          <mesh position={[0, 0, 0]}>
+            <boxGeometry args={[0.08, 0.3, 0.08]} />
+            <primitive object={skinMaterial} />
+          </mesh>
+          {/* Right Hand */}
+          <mesh position={[0, -0.2, -0.1]}>
+            <sphereGeometry args={[0.06, 8, 8]} />
+            <primitive object={skinMaterial} />
+          </mesh>
+        </group>
+
+        {/* Player Body - visible when looking down */}
+        <mesh position={[0, -0.6, -0.1]}>
+          <boxGeometry args={[0.3, 0.4, 0.15]} />
+          <primitive object={shirtMaterial} />
+        </mesh>
+
+        {/* Player Legs - visible when looking down */}
+        <group ref={legsRef} position={[0, -1.0, 0]}>
+          {/* Left Leg */}
+          <mesh position={[-0.08, 0, 0]}>
+            <boxGeometry args={[0.12, 0.6, 0.12]} />
+            <primitive object={pantsMaterial} />
+          </mesh>
+          
+          {/* Right Leg */}
+          <mesh position={[0.08, 0, 0]}>
+            <boxGeometry args={[0.12, 0.6, 0.12]} />
+            <primitive object={pantsMaterial} />
+          </mesh>
+          
+          {/* Left Foot */}
+          <mesh position={[-0.08, -0.35, 0.08]}>
+            <boxGeometry args={[0.12, 0.08, 0.2]} />
+            <primitive object={shoesMaterial} />
+          </mesh>
+          
+          {/* Right Foot */}
+          <mesh position={[0.08, -0.35, 0.08]}>
+            <boxGeometry args={[0.12, 0.08, 0.2]} />
+            <primitive object={shoesMaterial} />
+          </mesh>
+        </group>
+      </group>
+
       {/* Debug sphere to visualize player position - completely hidden now */}
       <mesh
         ref={playerRef}
